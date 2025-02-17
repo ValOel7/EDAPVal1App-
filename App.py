@@ -3,7 +3,7 @@ import numpy as np
 import streamlit as st
 
 #https://docs.streamlit.io/develop/quick-reference/cheat-sheet
-st.title("This is my EDAB App")
+st.title("This is my EDAP App")
 # Generate random time series data
 if st.button("Test this"):
   time_series = np.random.randn(100)
