@@ -6,6 +6,7 @@ import time
 import networkx as nx
 
 # Initialize simulation parameters
+#here you go change the values 
 def get_model_params():
     return {
         "N": st.sidebar.slider("Number of agents", 50, 500, 100),
@@ -15,6 +16,7 @@ def get_model_params():
     }
 
 # Simple Moving Average function for smoothing
+#the window size is how moving average if its 10, then it has moving average of 9 this smooths out
 def moving_average(data, window_size=1):
     if len(data) < window_size:
         return data
