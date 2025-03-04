@@ -4,19 +4,18 @@ import numpy as np
 import random
 import time
 import networkx as nx
+import random
 
 # Initialize simulation parameters
-#here you go change the values 
 def get_model_params():
     return {
-        "N": st.sidebar.slider("Number of agents", 50, 500, 100),
-        "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
-        "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
+        "N": st.sidebar.slider("Number of assets in the investment portfolio", 50, 500, 100),
+        "initial_affected": st.sidebar.slider("Initial Number of Assets affected in the market downturn", 1, 10, 3),
+        "affected_correlation": st.sidebar.slider("Correlation between the assets", 0.0, 1.0, 0.5),
         "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 100, 50),  # Duration of the experiment
     }
 
 # Simple Moving Average function for smoothing
-#the window size is how moving average if its 10, then it has moving average of 9 this smooths out
 def moving_average(data, window_size=1):
     if len(data) < window_size:
         return data
@@ -26,79 +25,81 @@ def moving_average(data, window_size=1):
 class Agent:
     def __init__(self, unique_id, status, size):
         self.unique_id = unique_id
-        self.status = status  # "infected", "susceptible", "alive", "dead"
+        self.status = status  # "affected", "susceptible assets", "", "liquidated_asset"
         self.size = size  # Determines susceptibility
         self.infection_timer = 0  # Timer for conversion delay
         self.recovery_timer = 0  # Timer for turning green after infection
 
-    def interact(self, neighbors, infection_probability):
-        if self.status == "infected":
-            for neighbor in neighbors:
-                if neighbor.status == "susceptible":
-                    susceptibility_factor = 1.0 / neighbor.size  # Smaller nodes are more susceptible
-                    if random.random() < (infection_probability * susceptibility_factor):
-                        neighbor.infection_timer = self.size  # Delay based on size
+  def interact(self, neighbors, affected_correlation):
+      if self.status == "affected":
+         for neighbor in neighbors:
+              if neighbor.status == "susceptible assets":
+                 susceptibility_factor = 1.0 / neighbor.size  # Smaller nodes are more susceptible assets
+                  random_correlation = affected_correlation * (random.uniform(-1, 1) / neighbor.size)
+                
+                  if random_correlation > 0.5:  # Adjust threshold as needed
+                     neighbor.infection_timer = self.size  # Delay based on size
 
     def update_status(self):
-        if self.status == "susceptible" and self.infection_timer > 0:
+        if self.status == "susceptible assets" and self.infection_timer > 0:
             self.infection_timer -= 1
             if self.infection_timer == 0:
-                self.status = "infected"
-                self.recovery_timer = 3  # Stay infected for 3 seconds before recovering
-        elif self.status == "infected" and self.recovery_timer > 0:
+                self.status = "affected"
+                self.recovery_timer = 5  # Stay affected for 3 seconds before recovering
+        elif self.status == "affected" and self.recovery_timer > 0:
             self.recovery_timer -= 1
             if self.recovery_timer == 0:
-                self.status = "alive" if random.random() > 0.5 else "dead"  # 50% chance to turn blue (dead)
+                self.status = "asset_back_equilibrium" if random.random() > 0.5 else "liquidated_asset"  # 50% chance to turn blue (liquidated_asset)
 
 # Disease Spread Model
-class DiseaseSpreadModel:
+class RiskSpreadModel:
     def __init__(self, **params):
         self.num_agents = params["N"]
-        self.infection_probability = params["infection_probability"]
+        self.random_correlation = params["random_correlation"]
         self.G = nx.barabasi_albert_graph(self.num_agents, 3)
         self.agents = {}
         
         all_nodes = list(self.G.nodes())
-        initial_infected = random.sample(all_nodes, params["initial_infected"])  # Select initial infected nodes
+        initial_affected = random.sample(all_nodes, params["initial_affected"])  # Select initial affected nodes
         
         for node in all_nodes:
-            size = random.choice([1, 2, 3, 4])  # 1 (most susceptible) to 4 (least susceptible)
-            status = "infected" if node in initial_infected else "susceptible"
+            size = random.choice([1, 2, 3, 4])  # 1 (most susceptible assets) to 4 (susceptible assets)
+            status = "affected" if node in initial_affected else "susceptible assets"
             self.agents[node] = Agent(node, status, size)
         
         self.node_positions = nx.spring_layout(self.G)  # Fix network shape
         self.history = []
-        self.infection_counts = []
-        self.alive_counts = []
-        self.dead_counts = []
+        self.affectedasset_counts = []
+        self.asset_back_equilibrium_counts = []
+        self.liquidated_asset_counts = []
 
     def step(self, step_num):
         infections = 0
-        newly_alive = 0
-        newly_dead = 0
+        newly_asset_back_equilibrium = 0
+        newly_liquidated_asset = 0
         
         for node, agent in self.agents.items():
             neighbors = [self.agents[n] for n in self.G.neighbors(node)]
-            agent.interact(neighbors, self.infection_probability)
+            agent.interact(neighbors, self.random_correlation)
         
         for agent in self.agents.values():
             prev_status = agent.status
             agent.update_status()
-            if prev_status == "susceptible" and agent.status == "infected":
+            if prev_status == "susceptible assets" and agent.status == "affected":
                 infections += 1
-            elif prev_status == "infected" and agent.status == "alive":
-                newly_alive += 1
-            elif prev_status == "infected" and agent.status == "dead":
-                newly_dead += 1
+            elif prev_status == "affected" and agent.status == "asset_back_equilibrium":
+                newly_asset_back_equilibrium += 1
+            elif prev_status == "affected" and agent.status == "liquidated_asset":
+                newly_liquidated_asset += 1
         
-        self.infection_counts.append(infections)
-        self.alive_counts.append(newly_alive)
-        self.dead_counts.append(newly_dead)
+        self.affectedasset_counts.append(infections)
+        self.asset_back_equilibrium_counts.append(newly_asset_back_equilibrium)
+        self.liquidated_asset_counts.append(newly_liquidated_asset)
         self.history.append({node: agent.status for node, agent in self.agents.items()})
 
 # Visualization function
-def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
-    color_map = {"infected": "red", "susceptible": "gray", "alive": "green", "dead": "blue"}
+def plot_visuals(G, agents, positions, infections, asset_back_equilibrium_counts, liquidated_asset_counts):
+    color_map = {"affected": "red", "susceptible assets": "gray", "asset_back_equilibrium": "green", "liquidated_asset": "blue"}
     node_colors = [color_map[agents[node].status] for node in G.nodes()]
     node_sizes = [agents[node].size * 50 for node in G.nodes()]  # Adjust node size by susceptibility
     
@@ -114,56 +115,54 @@ def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
     axes[0, 1].set_xlabel("Time (Seconds)")
     axes[0, 1].set_ylabel("New Infections per Step")
     
-    # Alive time series plot
-    axes[1, 0].plot(moving_average(alive_counts), color="green", linewidth=1.5)
-    axes[1, 0].set_title("New Alive Per Step")
+    # asset_back_equilibrium time series plot
+    axes[1, 0].plot(moving_average(asset_back_equilibrium_counts), color="green", linewidth=1.5)
+    axes[1, 0].set_title("New asset_back_equilibrium Per Step")
     axes[1, 0].set_xlabel("Time (Seconds)")
-    axes[1, 0].set_ylabel("Alive Count Per Step")
+    axes[1, 0].set_ylabel("asset_back_equilibrium Count Per Step")
     
-    # Dead time series plot
-    axes[1, 1].plot(moving_average(dead_counts), color="blue", linewidth=1.5)
-    axes[1, 1].set_title("New Dead Per Step")
+    # liquidated_asset time series plot
+    axes[1, 1].plot(moving_average(liquidated_asset_counts), color="blue", linewidth=1.5)
+    axes[1, 1].set_title("New liquidated_asset Per Step")
     axes[1, 1].set_xlabel("Time (Seconds")
-    axes[1, 1].set_ylabel("Dead Count Per Step")
+    axes[1, 1].set_ylabel("liquidated_asset Count Per Step")
     
     plt.tight_layout()
     return fig
 
 # Streamlit App
-st.title("Scale-Free Network Disease Spread Simulation")
+st.title("Scale-Free Network Investment and Portfolio Risk Analysis Spread Simulation")
 params = get_model_params()
 
-if st.button("Run Simulation"):
+if st.button("Run Risk Analysis"):
     st.markdown("<script>window.scrollTo(0, document.body.scrollHeight);</script>", unsafe_allow_html=True)
-    model = DiseaseSpreadModel(**params)
+    model = RiskSpreadModel(**params)
     progress_bar = st.progress(0)
     visual_plot = st.empty()
     
     for step_num in range(1, params["steps"] + 1):
         model.step(step_num)
         progress_bar.progress(step_num / params["steps"])
-        fig = plot_visuals(model.G, model.agents, model.node_positions, model.infection_counts, model.alive_counts, model.dead_counts)
+        fig = plot_visuals(model.G, model.agents, model.node_positions, model.affectedasset_counts, model.asset_back_equilibrium_counts, model.liquidated_asset_counts)
         visual_plot.pyplot(fig)
     
-    st.write("Simulation Complete.")
+    st.write("Investment and Portfolio Risk Analysis Simulation Complete.")
 
-st.markdown(
-    """
-    **Scale-Free Network Disease Spread Simulation**
+    st.markdown( """ Scale-Free Network Investment and Portfolio Risk Analysis Spread Simulation
 
-    This simulation models disease spread in a **scale-free network** using an agent-based approach. 
-    Nodes represent individuals, where **red indicates infection, green represents recovery, and blue signifies death**. 
-    The spread follows **proximity-based transmission**, with larger nodes taking longer to infect smaller ones. 
-    After 3 time steps, an infected node **recovers (turns green) or dies (turns blue) with a 50% probability**. 
-    Users can adjust the number of agents, infection probability, and experiment duration.
+This simulation models a market downturn in one sector and how an asset impacts another asset through correlation in a **scale-free network** using an agent-based approach. 
+Nodes represent different assets, where **red indicates that the asset has been affetced by the market downturn, green represents the asset going back to equilibrium, and blue signifies that the asset Liquidated**. 
+The market downturn follows a **proximity-based transmission**, with larger nodes taking longer to affect smaller ones. 
+After 5 time steps, an affected node **goes back to equilibrium (turns green) or Liquidates (turns blue) with a 50% probability**. 
+Users can adjust the number of agents, infection probability, and experiment duration.
 
-    **Visualizations:**
-    - A **real-time network graph** showing nodes changing color as infection progresses.
-    - **Three smoothed time series plots**:
-      - Infection spread over time (**Red**).
-      - Number of recoveries per step (**Green**).
-      - Number of deaths per step (**Blue**).
+**Visualizations:**
+- A **real-time network graph** showing nodes changing color as a market turndown progresses.
+- **Three smoothed time series plots**:
+  - Affected assets over time (**Red**).
+  - Number of assets reaching eqilibrium per step (**Green**).
+  - Number of liquidations per step (**Blue**).
 
-    Adjust parameters and run the simulation to observe how disease spreads in a complex network.
-    """
+Adjust parameters and run the simulation to observe how a market downturn in one sector impacts correlated assets in a complex network.
+"""
 )
