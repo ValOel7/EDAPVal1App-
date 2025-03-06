@@ -30,15 +30,13 @@ class Agent:
         self.infection_timer = 0  # Timer for conversion delay
         self.recovery_timer = 0  # Timer for turning green after infection
 
-  def interact(self, neighbors, affected_correlation):
-      if self.status == "affected":
-         for neighbor in neighbors:
-              if neighbor.status == "susceptible assets":
-                 susceptibility_factor = 1.0 / neighbor.size  # Smaller nodes are more susceptible assets
-                  random_correlation = affected_correlation * (random.uniform(-1, 1) / neighbor.size)
-                
-                  if random_correlation > 0.5:  # Adjust threshold as needed
-                     neighbor.infection_timer = self.size  # Delay based on size
+    def interact(self, neighbors, affected_correlation):
+          if self.status == "affected":
+             for neighbor in neighbors:
+                if neighbor.status == "susceptible assets":
+                    susceptibility_factor = 1.0 / neighbor.size  # Smaller nodes are more susceptible asset
+                    if random_correlation > 0.5:  # Adjust threshold as needed
+                        neighbor.infection_timer = self.size  # Delay based on size
 
     def update_status(self):
         if self.status == "susceptible assets" and self.infection_timer > 0:
